@@ -16,7 +16,6 @@ class MainActivity : AppCompatActivity() {
 
         button.setOnClickListener {
             val intent = Intent(this, ImagePickerActivity::class.java)
-            intent.putExtra(ImagePickerActivity.INTENT_SELECT_CAMERA, true)
             startActivityForResult(intent, 100)
         }
     }

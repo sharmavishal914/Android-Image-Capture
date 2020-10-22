@@ -76,7 +76,7 @@ class ImagePickerActivity : AppCompatActivity() {
         val builder = AlertDialog.Builder(this)
         builder.setTitle("Photo Capture")
         val animals = arrayOf("Camera", "Gallery")
-        builder.setItems(animals) { dialog, which ->
+        builder.setItems(animals) { _, which ->
             when (which) {
                 0 -> takeCameraImage()
                 1 -> chooseImageFromGallery()
@@ -250,7 +250,7 @@ class ImagePickerActivity : AppCompatActivity() {
     fun clearCache() {
         val path = File(externalCacheDir, "camera")
         if (path.exists() && path.isDirectory) {
-            for (child in path.listFiles()) {
+            for (child in path.listFiles() ?: arrayOf()) {
                 child.delete()
             }
         }
