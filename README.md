@@ -11,8 +11,9 @@ This code a sample code to capture cropped image from camera & gallery.
 
 Add 3rd party library in app gradle file
 
-    implementation "com.karumi:dexter:6.2.1"
-    implementation 'com.github.yalantis:ucrop:2.2.6'
+
+        implementation "com.karumi:dexter:6.2.1"
+        implementation 'com.github.yalantis:ucrop:2.2.6'
 
 
 Add file_paths.xml in res/xml folder
@@ -34,11 +35,11 @@ Add permissions in manifest file
 Add queries for Android 11
 
 
-     <queries>
-         <intent>
-              <action android:name="android.media.action.IMAGE_CAPTURE" />
-          </intent>
-     </queries>
+        <queries>
+            <intent>
+                <action android:name="android.media.action.IMAGE_CAPTURE" />
+            </intent>
+        </queries>
 
 Add activity & file provider in manifest
 
@@ -69,6 +70,7 @@ Copy ImagePickerActivity & activity_image_picker to your source code & start cap
 
 Image URI will be received in activity result
 
+
         override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
             super.onActivityResult(requestCode, resultCode, data)
             if (requestCode == 100) {
@@ -85,3 +87,11 @@ Image URI will be received in activity result
                 }
             }
         }
+
+Add progaurd rules
+
+    -dontwarn com.yalantis.ucrop**
+    -keep class com.yalantis.ucrop** { *; }
+    -keep interface com.yalantis.ucrop** { *; }
+
+
