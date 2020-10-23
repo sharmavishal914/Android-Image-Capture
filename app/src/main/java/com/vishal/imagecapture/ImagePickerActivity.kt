@@ -3,6 +3,7 @@ package com.vishal.imagecapture
 import android.Manifest
 import android.content.ContentResolver
 import android.content.Intent
+import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
 import android.provider.MediaStore
@@ -106,13 +107,12 @@ class ImagePickerActivity : AppCompatActivity() {
                                 REQUEST_IMAGE_CAPTURE
                             )
                         }
-                    }
-
-                    if (report.isAnyPermissionPermanentlyDenied) {
+                    } else if (report.isAnyPermissionPermanentlyDenied) {
                         showSettingsDialog()
+                    } else if (report.deniedPermissionResponses.isNotEmpty()) {
+                        takeCameraImage()
                     }
                 }
-
                 override fun onPermissionRationaleShouldBeShown(
                     permissions: List<PermissionRequest>,
                     token: PermissionToken
@@ -127,18 +127,23 @@ class ImagePickerActivity : AppCompatActivity() {
             .withPermissions(Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE)
             .withListener(object : MultiplePermissionsListener {
                 override fun onPermissionsChecked(report: MultiplePermissionsReport) {
-                    if (report.areAllPermissionsGranted()) {
-                        val pickPhoto = Intent(
-                            Intent.ACTION_PICK,
-                            MediaStore.Images.Media.EXTERNAL_CONTENT_URI
-                        )
-                        startActivityForResult(
-                            pickPhoto,
-                            REQUEST_GALLERY_IMAGE
-                        )
-                    }
-                    if (report.isAnyPermissionPermanentlyDenied) {
-                        showSettingsDialog()
+                    when {
+                        report.areAllPermissionsGranted() -> {
+                            val pickPhoto = Intent(
+                                Intent.ACTION_PICK,
+                                MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+                            )
+                            startActivityForResult(
+                                pickPhoto,
+                                REQUEST_GALLERY_IMAGE
+                            )
+                        }
+                        report.isAnyPermissionPermanentlyDenied -> {
+                            showSettingsDialog()
+                        }
+                        report.deniedPermissionResponses.isNotEmpty() -> {
+                            chooseImageFromGallery()
+                        }
                     }
                 }
 
@@ -189,7 +194,9 @@ class ImagePickerActivity : AppCompatActivity() {
         // applying UI theme
         options.setToolbarColor(ContextCompat.getColor(this, R.color.colorPrimary))
         options.setStatusBarColor(ContextCompat.getColor(this, R.color.colorPrimary))
-        //        options.setActiveWidgetColor(ContextCompat.getColor(this, R.color.colorPrimary));
+        options.setActiveControlsWidgetColor(ContextCompat.getColor(this, R.color.colorPrimary))
+        options.setToolbarWidgetColor(Color.WHITE)
+
         if (lockAspectRatio) options.withAspectRatio(
             ASPECT_RATIO_X.toFloat(),
             ASPECT_RATIO_Y.toFloat()
@@ -270,7 +277,10 @@ class ImagePickerActivity : AppCompatActivity() {
             dialog.cancel()
             openSettings()
         }
-        builder.setNegativeButton("CANCEL") { dialog, _ -> dialog.cancel() }
+        builder.setNegativeButton("CANCEL") { dialog, _ ->
+            dialog.cancel()
+            this@ImagePickerActivity.finish()
+        }
         builder.show()
     }
 
