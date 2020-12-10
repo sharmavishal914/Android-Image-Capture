@@ -1,2 +1,3 @@
+include ':pickImage'
 include ':app'
 rootProject.name = "ImageCapture"

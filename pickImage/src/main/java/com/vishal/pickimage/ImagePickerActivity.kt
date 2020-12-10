@@ -1,7 +1,8 @@
-package com.vishal.imagecapture
+package com.vishal.pickimage
 
 import android.Manifest
 import android.content.ContentResolver
+import android.content.DialogInterface
 import android.content.Intent
 import android.graphics.Color
 import android.net.Uri
@@ -34,63 +35,69 @@ class ImagePickerActivity : AppCompatActivity() {
         const val INTENT_BITMAP_MAX_HEIGHT = "max_height"
         const val INTENT_SELECT_GALLERY = "select_gallery"
         const val INTENT_SELECT_CAMERA = "select_camera"
+        const val REQUEST_IMAGE_CAPTURE = 0
+        const val REQUEST_GALLERY_IMAGE = 1
     }
 
-    private val TAG = ImagePickerActivity::class.java.simpleName
-    val REQUEST_IMAGE_CAPTURE = 0
-    val REQUEST_GALLERY_IMAGE = 1
-
-    private var lockAspectRatio = true
     private var setBitmapMaxWidthHeight = true
-    private var ASPECT_RATIO_X: Int = 1
-    private var ASPECT_RATIO_Y: Int = 1
-    private var bitmapMaxWidth: Int = 500
-    private var bitmapMaxHeight: Int = 500
-    private var IMAGE_COMPRESSION = 80
-    private var fileName: String = ""
+    private var lockAspectRatio = false
+    private var aspectRatioX = 1
+    private var aspectRatioY = 1
+    private var bitmapMaxWidth = 1000
+    private var bitmapMaxHeight = 1000
+    private var imageCompression = 50
+    private var fileName = ""
+    private var title = "Pick Photo"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_image_picker)
-        supportActionBar?.title = "Photo Capture"
+        supportActionBar?.title = title
         clearCache()
 
-        ASPECT_RATIO_X = intent.getIntExtra(INTENT_ASPECT_RATIO_X, ASPECT_RATIO_X)
-        ASPECT_RATIO_Y = intent.getIntExtra(INTENT_ASPECT_RATIO_Y, ASPECT_RATIO_Y)
-        IMAGE_COMPRESSION = intent.getIntExtra(INTENT_IMAGE_COMPRESSION_QUALITY, IMAGE_COMPRESSION)
-        lockAspectRatio = intent.getBooleanExtra(INTENT_LOCK_ASPECT_RATIO, true)
-        setBitmapMaxWidthHeight = intent.getBooleanExtra(INTENT_SET_BITMAP_MAX_WIDTH_HEIGHT, false)
+        aspectRatioX = intent.getIntExtra(INTENT_ASPECT_RATIO_X, aspectRatioX)
+        aspectRatioY = intent.getIntExtra(INTENT_ASPECT_RATIO_Y, aspectRatioY)
+        imageCompression = intent.getIntExtra(INTENT_IMAGE_COMPRESSION_QUALITY, imageCompression)
+        lockAspectRatio = intent.getBooleanExtra(INTENT_LOCK_ASPECT_RATIO, lockAspectRatio)
+        setBitmapMaxWidthHeight =
+            intent.getBooleanExtra(INTENT_SET_BITMAP_MAX_WIDTH_HEIGHT, setBitmapMaxWidthHeight)
         bitmapMaxWidth = intent.getIntExtra(INTENT_BITMAP_MAX_WIDTH, bitmapMaxWidth)
         bitmapMaxHeight = intent.getIntExtra(INTENT_BITMAP_MAX_HEIGHT, bitmapMaxHeight)
 
-        if (intent.getBooleanExtra(INTENT_SELECT_CAMERA, false)) {
-            takeCameraImage()
-        } else if (intent.getBooleanExtra(INTENT_SELECT_GALLERY, false)) {
-            chooseImageFromGallery()
-        } else {
-            showImagePickerOptions()
+        when {
+            intent.getBooleanExtra(INTENT_SELECT_CAMERA, false) -> {
+                takeCameraImage()
+            }
+            intent.getBooleanExtra(INTENT_SELECT_GALLERY, false) -> {
+                chooseImageFromGallery()
+            }
+            else -> {
+                showImagePickerOptions()
+            }
         }
     }
 
 
-    fun showImagePickerOptions() {
+    private fun showImagePickerOptions() {
         val builder = AlertDialog.Builder(this)
-        builder.setTitle("Photo Capture")
-        val animals = arrayOf("Camera", "Gallery")
-        builder.setItems(animals) { _, which ->
+        builder.setTitle(title)
+        val options = arrayOf("Camera", "Gallery")
+        builder.setItems(options) { _, which ->
             when (which) {
                 0 -> takeCameraImage()
                 1 -> chooseImageFromGallery()
             }
         }
         val dialog = builder.create()
-        dialog.setCancelable(false)
         dialog.show()
+        dialog.setOnCancelListener {
+            setResultCancelled()
+        }
     }
 
 
     private fun takeCameraImage() {
-        Dexter.withActivity(this)
+        Dexter.withContext(this)
             .withPermissions(Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE)
             .withListener(object : MultiplePermissionsListener {
                 override fun onPermissionsChecked(report: MultiplePermissionsReport) {
@@ -113,6 +120,7 @@ class ImagePickerActivity : AppCompatActivity() {
                         takeCameraImage()
                     }
                 }
+
                 override fun onPermissionRationaleShouldBeShown(
                     permissions: List<PermissionRequest>,
                     token: PermissionToken
@@ -123,7 +131,7 @@ class ImagePickerActivity : AppCompatActivity() {
     }
 
     private fun chooseImageFromGallery() {
-        Dexter.withActivity(this)
+        Dexter.withContext(this)
             .withPermissions(Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE)
             .withListener(object : MultiplePermissionsListener {
                 override fun onPermissionsChecked(report: MultiplePermissionsReport) {
@@ -189,7 +197,7 @@ class ImagePickerActivity : AppCompatActivity() {
     private fun cropImage(sourceUri: Uri) {
         val destinationUri = Uri.fromFile(File(cacheDir, queryName(contentResolver, sourceUri)))
         val options = UCrop.Options()
-        options.setCompressionQuality(IMAGE_COMPRESSION)
+        options.setCompressionQuality(imageCompression)
 
         // applying UI theme
         options.setToolbarColor(ContextCompat.getColor(this, R.color.colorPrimary))
@@ -198,11 +206,11 @@ class ImagePickerActivity : AppCompatActivity() {
         options.setToolbarWidgetColor(Color.WHITE)
 
         if (lockAspectRatio) options.withAspectRatio(
-            ASPECT_RATIO_X.toFloat(),
-            ASPECT_RATIO_Y.toFloat()
+            aspectRatioX.toFloat(),
+            aspectRatioY.toFloat()
         )
 
-        options.setHideBottomControls(true)
+        options.setHideBottomControls(false)
 
         if (setBitmapMaxWidthHeight) options.withMaxResultSize(bitmapMaxWidth, bitmapMaxHeight)
         UCrop.of(sourceUri, destinationUri)
@@ -241,20 +249,20 @@ class ImagePickerActivity : AppCompatActivity() {
     }
 
 
-    private fun queryName(resolver: ContentResolver, uri: Uri): String? {
-        val returnCursor = resolver.query(uri, null, null, null, null)!!
-        val nameIndex = returnCursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-        returnCursor.moveToFirst()
-        val name = returnCursor.getString(nameIndex)
-        returnCursor.close()
-        return name
+    private fun queryName(resolver: ContentResolver, uri: Uri): String {
+        val returnCursor = resolver.query(uri, null, null, null, null)
+        val nameIndex = returnCursor?.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+        returnCursor?.moveToFirst()
+        val name = returnCursor?.getString(nameIndex ?: 0)
+        returnCursor?.close()
+        return name ?: ""
     }
 
     /**
      * Calling this will delete the images from cache directory
      * useful to clear some memory
      */
-    fun clearCache() {
+    private fun clearCache() {
         val path = File(externalCacheDir, "camera")
         if (path.exists() && path.isDirectory) {
             for (child in path.listFiles() ?: arrayOf()) {
@@ -263,11 +271,6 @@ class ImagePickerActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * Showing Alert Dialog with Settings option
-     * Navigates user to app settings
-     * NOTE: Keep proper title and message depending on your app
-     */
     private fun showSettingsDialog() {
         val builder: android.app.AlertDialog.Builder =
             android.app.AlertDialog.Builder(this)
@@ -291,6 +294,5 @@ class ImagePickerActivity : AppCompatActivity() {
         intent.data = uri
         startActivityForResult(intent, 101)
     }
-
 
 }
