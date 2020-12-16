@@ -40,7 +40,7 @@ class ImagePickerActivity : AppCompatActivity() {
     }
 
     private var setBitmapMaxWidthHeight = true
-    private var lockAspectRatio = false
+    private var lockAspectRatio = true
     private var aspectRatioX = 1
     private var aspectRatioY = 1
     private var bitmapMaxWidth = 1000
@@ -98,7 +98,7 @@ class ImagePickerActivity : AppCompatActivity() {
 
     private fun takeCameraImage() {
         Dexter.withContext(this)
-            .withPermissions(Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE)
+            .withPermissions(Manifest.permission.CAMERA)
             .withListener(object : MultiplePermissionsListener {
                 override fun onPermissionsChecked(report: MultiplePermissionsReport) {
                     if (report.areAllPermissionsGranted()) {
@@ -132,7 +132,7 @@ class ImagePickerActivity : AppCompatActivity() {
 
     private fun chooseImageFromGallery() {
         Dexter.withContext(this)
-            .withPermissions(Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE)
+            .withPermissions(Manifest.permission.CAMERA)
             .withListener(object : MultiplePermissionsListener {
                 override fun onPermissionsChecked(report: MultiplePermissionsReport) {
                     when {
@@ -210,7 +210,7 @@ class ImagePickerActivity : AppCompatActivity() {
             aspectRatioY.toFloat()
         )
 
-        options.setHideBottomControls(false)
+        options.setHideBottomControls(true)
 
         if (setBitmapMaxWidthHeight) options.withMaxResultSize(bitmapMaxWidth, bitmapMaxHeight)
         UCrop.of(sourceUri, destinationUri)
