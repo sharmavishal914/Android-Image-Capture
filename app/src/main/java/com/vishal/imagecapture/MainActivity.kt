@@ -22,10 +22,9 @@ class MainActivity : AppCompatActivity() {
         button.setOnClickListener {
             val intent = Intent(this, ImagePickerActivity::class.java)
             startActivityForResult(intent, 100)
-            overridePendingTransition(0,0)
+            overridePendingTransition(0, 0)
         }
     }
-
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)

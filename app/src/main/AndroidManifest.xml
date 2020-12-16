@@ -3,8 +3,8 @@
     package="com.vishal.imagecapture">
 
     <application
-        android:hardwareAccelerated="true"
         android:allowBackup="true"
+        android:hardwareAccelerated="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
@@ -18,7 +18,7 @@
             </intent-filter>
         </activity>
 
-        <activity android:name="com.vishal.pickimage.ImagePickerActivity"/>
+        <activity android:name="com.vishal.pickimage.ImagePickerActivity" />
     </application>
 
 </manifest>

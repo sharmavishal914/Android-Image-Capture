@@ -2,29 +2,28 @@ package com.vishal.pickimage
 
 import android.Manifest
 import android.content.ContentResolver
-import android.content.DialogInterface
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Color
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
 import android.provider.OpenableColumns
 import android.provider.Settings
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
-import com.karumi.dexter.Dexter
-import com.karumi.dexter.MultiplePermissionsReport
-import com.karumi.dexter.PermissionToken
-import com.karumi.dexter.listener.PermissionRequest
-import com.karumi.dexter.listener.multi.MultiplePermissionsListener
 import com.yalantis.ucrop.UCrop
 import java.io.File
 
 class ImagePickerActivity : AppCompatActivity() {
 
     companion object {
+        const val INTENT_PRIMARY_COLOR = "primary_color"
+        const val INTENT_WIDGET_COLOR = "widget_color"
         const val INTENT_IMAGE_PICKER_OPTION = "image_picker_option"
         const val INTENT_ASPECT_RATIO_X = "aspect_ratio_x"
         const val INTENT_ASPECT_RATIO_Y = "aspect_ratio_Y"
@@ -37,6 +36,7 @@ class ImagePickerActivity : AppCompatActivity() {
         const val INTENT_SELECT_CAMERA = "select_camera"
         const val REQUEST_IMAGE_CAPTURE = 0
         const val REQUEST_GALLERY_IMAGE = 1
+        const val PERMISSIONS_REQUEST_CODE = 2
     }
 
     private var setBitmapMaxWidthHeight = true
@@ -46,8 +46,16 @@ class ImagePickerActivity : AppCompatActivity() {
     private var bitmapMaxWidth = 1000
     private var bitmapMaxHeight = 1000
     private var imageCompression = 50
+    private var toolBarColor = Color.BLUE
+    private var statusBarColor = Color.BLUE
+    private var widgetColor = Color.WHITE
     private var fileName = ""
-    private var title = "Pick Photo"
+    private var title = "Add Photo"
+
+    var appPermissions = arrayOf(
+        Manifest.permission.READ_EXTERNAL_STORAGE,
+        Manifest.permission.CAMERA
+    )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -63,7 +71,80 @@ class ImagePickerActivity : AppCompatActivity() {
             intent.getBooleanExtra(INTENT_SET_BITMAP_MAX_WIDTH_HEIGHT, setBitmapMaxWidthHeight)
         bitmapMaxWidth = intent.getIntExtra(INTENT_BITMAP_MAX_WIDTH, bitmapMaxWidth)
         bitmapMaxHeight = intent.getIntExtra(INTENT_BITMAP_MAX_HEIGHT, bitmapMaxHeight)
+        toolBarColor = intent.getIntExtra(
+            INTENT_PRIMARY_COLOR,
+            ContextCompat.getColor(this, R.color.colorPrimary)
+        )
+        statusBarColor = intent.getIntExtra(
+            INTENT_PRIMARY_COLOR,
+            ContextCompat.getColor(this, R.color.colorPrimaryDark)
+        )
+        widgetColor = intent.getIntExtra(INTENT_WIDGET_COLOR, widgetColor)
 
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            window.statusBarColor = statusBarColor
+        }
+        if (checkPermission()) {
+            selectImage()
+        }
+    }
+
+    private fun checkPermission(): Boolean {
+        val listPermissionsNeeded: MutableList<String> = ArrayList()
+        for (perm in appPermissions) {
+            val permission = ContextCompat.checkSelfPermission(this, perm)
+            if (permission != PackageManager.PERMISSION_GRANTED) {
+                listPermissionsNeeded.add(perm)
+            }
+        }
+        if (listPermissionsNeeded.isNotEmpty()) {
+            ActivityCompat.requestPermissions(
+                this,
+                listPermissionsNeeded.toTypedArray(),
+                PERMISSIONS_REQUEST_CODE
+            )
+            return false
+        }
+        return true
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<String?>,
+        grantResults: IntArray
+    ) {
+        if (requestCode == PERMISSIONS_REQUEST_CODE) {
+            val permissionResults: HashMap<String?, Int> = HashMap()
+            var deniedCount = 0
+
+            for (i in grantResults.indices) {
+                if (grantResults[i] == PackageManager.PERMISSION_DENIED) {
+                    permissionResults[permissions[i]] = grantResults[i]
+                    deniedCount++
+                }
+            }
+
+            if (deniedCount == 0) {
+                selectImage()
+            } else {
+                var permanentDeniedCount = 0
+                for ((permName, _ult) in permissionResults) {
+                    val isRational =
+                        ActivityCompat.shouldShowRequestPermissionRationale(this, permName ?: "")
+                    if (!isRational) {
+                        permanentDeniedCount++
+                    }
+                }
+                if (permanentDeniedCount > 0) {
+                    showSettingsDialog()
+                } else {
+                    checkPermission()
+                }
+            }
+        }
+    }
+
+    private fun selectImage() {
         when {
             intent.getBooleanExtra(INTENT_SELECT_CAMERA, false) -> {
                 takeCameraImage()
@@ -97,71 +178,29 @@ class ImagePickerActivity : AppCompatActivity() {
 
 
     private fun takeCameraImage() {
-        Dexter.withContext(this)
-            .withPermissions(Manifest.permission.CAMERA)
-            .withListener(object : MultiplePermissionsListener {
-                override fun onPermissionsChecked(report: MultiplePermissionsReport) {
-                    if (report.areAllPermissionsGranted()) {
-                        fileName = System.currentTimeMillis().toString() + ".jpg"
-                        val takePictureIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
-                        takePictureIntent.putExtra(
-                            MediaStore.EXTRA_OUTPUT,
-                            getCacheImagePath(fileName)
-                        )
-                        if (takePictureIntent.resolveActivity(packageManager) != null) {
-                            startActivityForResult(
-                                takePictureIntent,
-                                REQUEST_IMAGE_CAPTURE
-                            )
-                        }
-                    } else if (report.isAnyPermissionPermanentlyDenied) {
-                        showSettingsDialog()
-                    } else if (report.deniedPermissionResponses.isNotEmpty()) {
-                        takeCameraImage()
-                    }
-                }
-
-                override fun onPermissionRationaleShouldBeShown(
-                    permissions: List<PermissionRequest>,
-                    token: PermissionToken
-                ) {
-                    token.continuePermissionRequest()
-                }
-            }).check()
+        fileName = System.currentTimeMillis().toString() + ".jpg"
+        val takePictureIntent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
+        takePictureIntent.putExtra(
+            MediaStore.EXTRA_OUTPUT,
+            getCacheImagePath(fileName)
+        )
+        if (takePictureIntent.resolveActivity(packageManager) != null) {
+            startActivityForResult(
+                takePictureIntent,
+                REQUEST_IMAGE_CAPTURE
+            )
+        }
     }
 
     private fun chooseImageFromGallery() {
-        Dexter.withContext(this)
-            .withPermissions(Manifest.permission.CAMERA)
-            .withListener(object : MultiplePermissionsListener {
-                override fun onPermissionsChecked(report: MultiplePermissionsReport) {
-                    when {
-                        report.areAllPermissionsGranted() -> {
-                            val pickPhoto = Intent(
-                                Intent.ACTION_PICK,
-                                MediaStore.Images.Media.EXTERNAL_CONTENT_URI
-                            )
-                            startActivityForResult(
-                                pickPhoto,
-                                REQUEST_GALLERY_IMAGE
-                            )
-                        }
-                        report.isAnyPermissionPermanentlyDenied -> {
-                            showSettingsDialog()
-                        }
-                        report.deniedPermissionResponses.isNotEmpty() -> {
-                            chooseImageFromGallery()
-                        }
-                    }
-                }
-
-                override fun onPermissionRationaleShouldBeShown(
-                    permissions: List<PermissionRequest>,
-                    token: PermissionToken
-                ) {
-                    token.continuePermissionRequest()
-                }
-            }).check()
+        val pickPhoto = Intent(
+            Intent.ACTION_PICK,
+            MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+        )
+        startActivityForResult(
+            pickPhoto,
+            REQUEST_GALLERY_IMAGE
+        )
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -194,16 +233,17 @@ class ImagePickerActivity : AppCompatActivity() {
         }
     }
 
+
     private fun cropImage(sourceUri: Uri) {
         val destinationUri = Uri.fromFile(File(cacheDir, queryName(contentResolver, sourceUri)))
         val options = UCrop.Options()
         options.setCompressionQuality(imageCompression)
 
         // applying UI theme
-        options.setToolbarColor(ContextCompat.getColor(this, R.color.colorPrimary))
-        options.setStatusBarColor(ContextCompat.getColor(this, R.color.colorPrimary))
-        options.setActiveControlsWidgetColor(ContextCompat.getColor(this, R.color.colorPrimary))
-        options.setToolbarWidgetColor(Color.WHITE)
+        options.setToolbarColor(toolBarColor)
+        options.setStatusBarColor(statusBarColor)
+        options.setActiveControlsWidgetColor(toolBarColor)
+        options.setToolbarWidgetColor(widgetColor)
 
         if (lockAspectRatio) options.withAspectRatio(
             aspectRatioX.toFloat(),

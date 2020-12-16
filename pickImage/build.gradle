@@ -34,9 +34,6 @@ dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
     implementation "androidx.core:core-ktx:$androidx_core_ktx"
 
-    // Permission library
-    implementation "com.karumi:dexter:6.2.1"
-
     // Image cropper
     implementation 'com.github.yalantis:ucrop:2.2.6'
 }
