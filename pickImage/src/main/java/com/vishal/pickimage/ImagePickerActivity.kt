@@ -128,7 +128,7 @@ class ImagePickerActivity : AppCompatActivity() {
                 selectImage()
             } else {
                 var permanentDeniedCount = 0
-                for ((permName, _ult) in permissionResults) {
+                for ((permName, _) in permissionResults) {
                     val isRational =
                         ActivityCompat.shouldShowRequestPermissionRationale(this, permName ?: "")
                     if (!isRational) {
