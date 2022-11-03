@@ -1,5 +1,6 @@
 package com.vishal.imagecapture
 
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
@@ -8,6 +9,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import com.vishal.pickimage.ImagePickerActivity
 import kotlinx.android.synthetic.main.activity_main.*
@@ -19,20 +21,24 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+//        val intent = Intent(this, ImagePickerActivity::class.java)
+//        intent.putExtra(ImagePickerActivity.INTENT_IMAGE_COMPRESSION_QUALITY, 30)
+//        resultLauncher.launch(intent)
+//        overridePendingTransition(0, 0)
+
         button.setOnClickListener {
             val intent = Intent(this, ImagePickerActivity::class.java)
-            startActivityForResult(intent, 100)
+            intent.putExtra(ImagePickerActivity.INTENT_IMAGE_COMPRESSION_QUALITY, 30)
+            resultLauncher.launch(intent)
             overridePendingTransition(0, 0)
         }
     }
 
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == 100) {
-            if (resultCode == RESULT_OK) {
+    var resultLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == Activity.RESULT_OK) {
                 try {
-                    val uri: Uri? = data?.getParcelableExtra("path")
-                    println(uri?.path)
+                    val uri: Uri? = result.data?.getParcelableExtra("path")
                     val bitmap = getBitmap(this, uri)
                     imageView.setImageBitmap(bitmap)
                 } catch (e: Exception) {
@@ -40,7 +46,6 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
-    }
 
     private fun getBitmap(context: Context, uri: Uri?): Bitmap? {
         if (uri == null) {
